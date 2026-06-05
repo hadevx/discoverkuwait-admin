@@ -5,7 +5,10 @@ import "./index.css";
 import { BrowserRouter } from "react-router-dom";
 import { Provider } from "react-redux";
 import { store } from "./redux/store.ts";
+import { setupListeners } from "@reduxjs/toolkit/query";
 import ToastWrapper from "./ToastWrapper";
+
+setupListeners(store.dispatch);
 
 const rootElement = document.getElementById("root")!;
 

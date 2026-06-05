@@ -35,6 +35,7 @@ type WordForm = {
   kuwaitiWord: string;
   arabicMeaning: string;
   englishMeaning: string;
+  pronunciation: string;
   example: string;
   category: string;
   isApproved: boolean;
@@ -78,6 +79,7 @@ export default function WordDetail() {
       kuwaitiWord: word.kuwaitiWord,
       arabicMeaning: word.arabicMeaning,
       englishMeaning: word.englishMeaning,
+      pronunciation: word.pronunciation ?? "",
       example: word.example ?? "",
       category: word.category,
       isApproved: word.isApproved,
@@ -213,6 +215,9 @@ export default function WordDetail() {
 
             <InfoRow icon={<MessageSquare className="size-4" />} label="Arabic Meaning" value={word.arabicMeaning} />
             <InfoRow icon={<MessageSquare className="size-4" />} label="English Meaning" value={word.englishMeaning} />
+            {word.pronunciation && (
+              <InfoRow icon={<Tag className="size-4" />} label="Pronunciation" value={word.pronunciation} />
+            )}
             {word.example && (
               <InfoRow icon={<Tag className="size-4" />} label="Example" value={word.example} />
             )}
@@ -285,6 +290,10 @@ export default function WordDetail() {
                 <div>
                   <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-zinc-400">English Meaning *</label>
                   <input value={editForm.englishMeaning} onChange={(e) => setEditForm({ ...editForm, englishMeaning: e.target.value })} className={inputCls} />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-zinc-400">Pronunciation</label>
+                  <input value={editForm.pronunciation} onChange={(e) => setEditForm({ ...editForm, pronunciation: e.target.value })} dir="ltr" placeholder="e.g. way-id" className={inputCls} />
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-zinc-400">Example</label>

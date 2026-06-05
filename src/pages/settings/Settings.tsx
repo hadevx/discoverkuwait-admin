@@ -1,5 +1,5 @@
 //@ts-nocheck
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
 import Layout from "../../Layout";
 import { Separator } from "../../components/ui/separator";
@@ -25,6 +25,49 @@ import {
   useUpdateStoreStatusMutation,
   useGetStoreStatusQuery,
 } from "../../redux/queries/maintenanceApi";
+import * as Popover from "@radix-ui/react-popover";
+
+const EMOJI_LIST = [
+  "🇰🇼","🕌","🌴","🌊","☀️","🏆","🎉","🎊","🔥","✨",
+  "😀","😊","😄","🤩","🥳","😍","🙌","👋","👍","💪",
+  "❤️","⭐","🌟","💡","🎯","📢","📣","🚀","💫","🌙",
+  "📚","🎓","🎵","💻","📱","🛒","🏷️","💰","🎁","📌",
+];
+
+function EmojiPicker({ onPick }: { onPick: (e: string) => void }) {
+  return (
+    <Popover.Root>
+      <Popover.Trigger asChild>
+        <button
+          type="button"
+          className="text-base leading-none rounded-lg border border-border bg-background px-2 py-1 hover:bg-secondary transition-colors"
+          title="Insert emoji">
+          😊
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          side="bottom"
+          align="end"
+          sideOffset={6}
+          className="z-50 w-64 rounded-2xl border border-border bg-background p-3 shadow-xl">
+          <div className="grid grid-cols-8 gap-1">
+            {EMOJI_LIST.map((em) => (
+              <button
+                key={em}
+                type="button"
+                onClick={() => onPick(em)}
+                className="flex items-center justify-center rounded-lg p-1.5 text-lg hover:bg-secondary transition-colors">
+                {em}
+              </button>
+            ))}
+          </div>
+          <Popover.Arrow className="fill-border" />
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
 
 const inputCls =
   "w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition";
@@ -85,11 +128,29 @@ export default function Settings() {
 
   const [siteStatus, setSiteStatus] = useState<"active" | "maintenance">("active");
   const [announcement, setAnnouncement] = useState("");
+  const [bannerBg, setBannerBg] = useState("#18181b");
+  const [bannerTextColor, setBannerTextColor] = useState("#ffffff");
+  const announcementRef = useRef<HTMLTextAreaElement>(null);
+
+  const insertEmoji = (emoji: string) => {
+    const el = announcementRef.current;
+    const start = el?.selectionStart ?? announcement.length;
+    const end = el?.selectionEnd ?? announcement.length;
+    const next = announcement.slice(0, start) + emoji + announcement.slice(end);
+    if (next.length > 280) return;
+    setAnnouncement(next);
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(start + emoji.length, start + emoji.length);
+    });
+  };
 
   useEffect(() => {
     if (current) {
       setSiteStatus(current.status === "maintenance" ? "maintenance" : "active");
       setAnnouncement(current.banner ?? "");
+      setBannerBg(current.bannerBg ?? "#18181b");
+      setBannerTextColor(current.bannerTextColor ?? "#ffffff");
     }
   }, [current]);
 
@@ -98,6 +159,8 @@ export default function Settings() {
       await updateStoreStatus({
         status: siteStatus,
         banner: announcement.trim(),
+        bannerBg,
+        bannerTextColor,
         price: 0,
       }).unwrap();
       toast.success(t("Platform settings saved", "تم حفظ إعدادات المنصة"));
@@ -361,8 +424,12 @@ export default function Settings() {
                 </div>
                 <Separator className="mb-4" />
 
-                <SectionLabel>{t("Banner Message", "نص الإعلان")}</SectionLabel>
+                <div className="flex items-center justify-between mb-1.5">
+                  <SectionLabel>{t("Banner Message", "نص الإعلان")}</SectionLabel>
+                  <EmojiPicker onPick={insertEmoji} />
+                </div>
                 <textarea
+                  ref={announcementRef}
                   value={announcement}
                   onChange={(e) => setAnnouncement(e.target.value)}
                   rows={3}
@@ -373,7 +440,7 @@ export default function Settings() {
                   )}
                   className={inputCls + " resize-none"}
                 />
-                <div className="flex items-center justify-between mt-1.5">
+                <div className="flex items-center justify-between mt-1.5 mb-4">
                   <p className="text-xs text-muted-foreground">
                     {t("Leave empty to hide the banner", "اتركه فارغاً لإخفاء البانر")}
                   </p>
@@ -383,13 +450,45 @@ export default function Settings() {
                   </span>
                 </div>
 
+                {/* Color pickers */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <SectionLabel>{t("Background Color", "لون الخلفية")}</SectionLabel>
+                    <div className="flex items-center gap-3 mt-1">
+                      <input
+                        type="color"
+                        value={bannerBg}
+                        onChange={(e) => setBannerBg(e.target.value)}
+                        className="h-9 w-12 cursor-pointer rounded-lg border border-border p-0.5 bg-background"
+                      />
+                      <span className="font-mono text-sm text-muted-foreground">{bannerBg}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <SectionLabel>{t("Text Color", "لون النص")}</SectionLabel>
+                    <div className="flex items-center gap-3 mt-1">
+                      <input
+                        type="color"
+                        value={bannerTextColor}
+                        onChange={(e) => setBannerTextColor(e.target.value)}
+                        className="h-9 w-12 cursor-pointer rounded-lg border border-border p-0.5 bg-background"
+                      />
+                      <span className="font-mono text-sm text-muted-foreground">{bannerTextColor}</span>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Preview */}
                 {announcement.trim() && (
-                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600 mb-1">
+                  <div className="mt-1 overflow-hidden rounded-xl border border-border">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-3 pt-2 pb-1">
                       {t("Preview", "معاينة")}
                     </p>
-                    <p className="text-sm text-amber-900 font-medium">{announcement}</p>
+                    <div
+                      className="w-full px-4 py-2.5 text-center text-sm font-medium"
+                      style={{ backgroundColor: bannerBg, color: bannerTextColor }}>
+                      {announcement}
+                    </div>
                   </div>
                 )}
               </div>

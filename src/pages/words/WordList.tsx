@@ -24,6 +24,7 @@ type WordForm = {
   kuwaitiWord: string;
   arabicMeaning: string;
   englishMeaning: string;
+  pronunciation: string;
   example: string;
   category: string;
   isApproved: boolean;
@@ -33,6 +34,7 @@ const EMPTY_FORM: WordForm = {
   kuwaitiWord: "",
   arabicMeaning: "",
   englishMeaning: "",
+  pronunciation: "",
   example: "",
   category: "slang",
   isApproved: false,
@@ -89,6 +91,18 @@ function WordFormFields({
           value={form.englishMeaning}
           onChange={(e) => setForm({ ...form, englishMeaning: e.target.value })}
           dir="ltr"
+          className={inputCls}
+        />
+      </div>
+      <div>
+        <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-zinc-400">
+          Pronunciation
+        </label>
+        <input
+          value={form.pronunciation}
+          onChange={(e) => setForm({ ...form, pronunciation: e.target.value })}
+          dir="ltr"
+          placeholder="e.g. way-id"
           className={inputCls}
         />
       </div>
@@ -264,7 +278,7 @@ const WordList = () => {
   const [editingWord, setEditingWord] = useState<any | null>(null);
   const [editForm, setEditForm] = useState<WordForm>(EMPTY_FORM);
 
-  const { data: words = [], isLoading, isError } = useGetAllWordsQuery({}, { refetchOnMountOrArgChange: true });
+  const { data: words = [], isLoading, isError } = useGetAllWordsQuery({}, { refetchOnMountOrArgChange: true, refetchOnFocus: true });
   const [createWord, { isLoading: isCreating }] = useCreateWordMutation();
   const [updateWord, { isLoading: isUpdating }] = useUpdateWordMutation();
   const [deleteWord] = useDeleteWordMutation();
@@ -338,6 +352,7 @@ const WordList = () => {
       kuwaitiWord: w.kuwaitiWord,
       arabicMeaning: w.arabicMeaning,
       englishMeaning: w.englishMeaning,
+      pronunciation: w.pronunciation ?? "",
       example: w.example ?? "",
       category: w.category,
       isApproved: w.isApproved,
@@ -462,8 +477,6 @@ const WordList = () => {
                     <thead className="bg-white text-gray-900/50 font-semibold">
                       <tr>
                         <th className="pb-2 border-b">{t.word}</th>
-                        <th className="pb-2 border-b">{t.arabic}</th>
-                        <th className="pb-2 border-b hidden md:table-cell">{t.english}</th>
                         <th className="pb-2 border-b">{t.category}</th>
                         <th className="pb-2 border-b">{t.status}</th>
                         <th className="pb-2 border-b">{language === "ar" ? "التصويتات" : "Votes"}</th>
@@ -482,10 +495,6 @@ const WordList = () => {
                               className="font-extrabold text-zinc-800 hover:text-blue-600 hover:underline transition-colors text-left">
                               {w.kuwaitiWord}
                             </button>
-                          </td>
-                          <td className="py-3 text-zinc-600 font-normal">{w.arabicMeaning}</td>
-                          <td className="py-3 text-zinc-600 font-normal hidden md:table-cell">
-                            {w.englishMeaning}
                           </td>
                           <td className="py-3">
                             <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-600">

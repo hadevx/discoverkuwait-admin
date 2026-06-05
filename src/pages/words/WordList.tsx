@@ -264,7 +264,7 @@ const WordList = () => {
   const [editingWord, setEditingWord] = useState<any | null>(null);
   const [editForm, setEditForm] = useState<WordForm>(EMPTY_FORM);
 
-  const { data: words = [], isLoading, isError } = useGetAllWordsQuery({});
+  const { data: words = [], isLoading, isError } = useGetAllWordsQuery({}, { refetchOnMountOrArgChange: true });
   const [createWord, { isLoading: isCreating }] = useCreateWordMutation();
   const [updateWord, { isLoading: isUpdating }] = useUpdateWordMutation();
   const [deleteWord] = useDeleteWordMutation();

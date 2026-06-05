@@ -1,9 +1,9 @@
 import "react-toastify/dist/ReactToastify.css";
 import SideMenu2 from "./components/SideMenu2";
-import { useSelector } from "react-redux";
+// import { useSelector } from "react-redux";
 
 function Layout({ children }: { children: React.ReactNode }) {
-  const lang = useSelector((state: any) => state.language.lang);
+  // const lang = useSelector((state: any) => state.language.lang);
 
   return (
     <div className="flex bg-background min-h-screen" style={{ fontFamily: "'Cairo', sans-serif" }}>

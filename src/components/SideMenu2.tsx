@@ -1,8 +1,17 @@
+//@ts-nocheck
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import clsx from "clsx";
 import {
-  Users, LogOut, Settings, Menu, X, Loader2Icon,
-  BookText, LayoutDashboard, Brain, ChevronRight,
+  Users,
+  LogOut,
+  Settings,
+  Menu,
+  X,
+  Loader2Icon,
+  BookText,
+  LayoutDashboard,
+  Brain,
+  ChevronRight,
 } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../redux/slices/authSlice";
@@ -14,10 +23,10 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const NAV = [
   { to: "/dashboard", icon: LayoutDashboard, en: "Dashboard", ar: "الرئيسية" },
-  { to: "/wordlist",  icon: BookText,        en: "Words",      ar: "الكلمات" },
-  { to: "/quizlist",  icon: Brain,           en: "Quiz",       ar: "الاختبار" },
-  { to: "/userlist",  icon: Users,           en: "Users",      ar: "المستخدمون" },
-  { to: "/settings",  icon: Settings,        en: "Settings",   ar: "الإعدادات" },
+  { to: "/wordlist", icon: BookText, en: "Words", ar: "الكلمات" },
+  { to: "/quizlist", icon: Brain, en: "Quiz", ar: "الاختبار" },
+  { to: "/userlist", icon: Users, en: "Users", ar: "المستخدمون" },
+  { to: "/settings", icon: Settings, en: "Settings", ar: "الإعدادات" },
 ];
 
 function SideMenu() {
@@ -47,8 +56,7 @@ function SideMenu() {
   }, [isMenuOpen]);
 
   const isActive = (to: string) =>
-    to === "/dashboard" ? pathname === to || pathname === "/"
-    : pathname.startsWith(to);
+    to === "/dashboard" ? pathname === to || pathname === "/" : pathname.startsWith(to);
 
   const t = (en: string, ar: string) => (language === "ar" ? ar : en);
 
@@ -85,12 +93,14 @@ function SideMenu() {
                 active
                   ? "bg-white/15 text-white shadow-sm"
                   : "text-indigo-200/80 hover:bg-white/8 hover:text-white",
-              )}
-            >
-              <span className={clsx(
-                "flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors",
-                active ? "bg-white/20 text-white" : "bg-white/5 text-indigo-300 group-hover:bg-white/10 group-hover:text-white",
               )}>
+              <span
+                className={clsx(
+                  "flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors",
+                  active
+                    ? "bg-white/20 text-white"
+                    : "bg-white/5 text-indigo-300 group-hover:bg-white/10 group-hover:text-white",
+                )}>
                 <Icon className="size-3.5" strokeWidth={active ? 2.5 : 2} />
               </span>
               <span className="flex-1">{t(en, ar)}</span>
@@ -119,11 +129,12 @@ function SideMenu() {
         <button
           onClick={handleLogout}
           disabled={loadingLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-rose-300 hover:bg-rose-500/15 hover:text-rose-200 transition-all duration-150 disabled:opacity-60"
-        >
-          {loadingLogout
-            ? <Loader2Icon className="size-4 animate-spin shrink-0" />
-            : <LogOut className="size-4 shrink-0" strokeWidth={2} />}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-rose-300 hover:bg-rose-500/15 hover:text-rose-200 transition-all duration-150 disabled:opacity-60">
+          {loadingLogout ? (
+            <Loader2Icon className="size-4 animate-spin shrink-0" />
+          ) : (
+            <LogOut className="size-4 shrink-0" strokeWidth={2} />
+          )}
           <span>{t("Log out", "تسجيل الخروج")}</span>
         </button>
       </div>
@@ -136,8 +147,7 @@ function SideMenu() {
       <button
         className="lg:hidden fixed top-4 left-4 z-50 flex size-9 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-lg"
         onClick={() => setIsMenuOpen((v) => !v)}
-        aria-label="Toggle menu"
-      >
+        aria-label="Toggle menu">
         {isMenuOpen ? <X className="size-4" /> : <Menu className="size-4" />}
       </button>
 
@@ -162,8 +172,7 @@ function SideMenu() {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", stiffness: 320, damping: 32 }}
-              className="fixed left-0 top-0 z-50 flex h-full w-56 flex-col bg-[oklch(0.20_0.055_275)] shadow-2xl lg:hidden"
-            >
+              className="fixed left-0 top-0 z-50 flex h-full w-56 flex-col bg-[oklch(0.20_0.055_275)] shadow-2xl lg:hidden">
               {sidebarContent}
             </motion.aside>
           </>

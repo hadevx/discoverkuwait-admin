@@ -1,9 +1,18 @@
+//@ts-nocheck
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
-  Users, BookText, Brain, Heart, CheckCircle2, Clock,
-  TrendingUp, ChevronRight, ToggleLeft, ToggleRight,
+  Users,
+  BookText,
+  Brain,
+  Heart,
+  CheckCircle2,
+  Clock,
+  TrendingUp,
+  ChevronRight,
+  ToggleLeft,
+  ToggleRight,
 } from "lucide-react";
 import clsx from "clsx";
 import Layout from "../../Layout";
@@ -50,12 +59,22 @@ function StatCard({
 }
 
 /* ── Section header ── */
-function SectionHeader({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) {
+function SectionHeader({
+  title,
+  action,
+  onAction,
+}: {
+  title: string;
+  action?: string;
+  onAction?: () => void;
+}) {
   return (
     <div className="flex items-center justify-between mb-3">
       <h2 className="text-sm font-bold text-zinc-700 uppercase tracking-wider">{title}</h2>
       {action && (
-        <button onClick={onAction} className="text-xs font-semibold text-zinc-400 hover:text-zinc-700 transition-colors flex items-center gap-1">
+        <button
+          onClick={onAction}
+          className="text-xs font-semibold text-zinc-400 hover:text-zinc-700 transition-colors flex items-center gap-1">
           {action} <ChevronRight className="size-3" />
         </button>
       )}
@@ -69,7 +88,10 @@ export default function Dashboard() {
   const { adminUserInfo } = useSelector((state: any) => state.auth);
   const isRtl = language === "ar";
 
-  const { data: usersData, isLoading: loadingUsers } = useGetUsersQuery({ pageNumber: 1, keyword: "" });
+  const { data: usersData, isLoading: loadingUsers } = useGetUsersQuery({
+    pageNumber: 1,
+    keyword: "",
+  });
   const { data: words = [], isLoading: loadingWords } = useGetAllWordsQuery({});
   const { data: exams = [], isLoading: loadingExams } = useGetAllQuizzesQuery({});
 
@@ -88,22 +110,41 @@ export default function Dashboard() {
     const inactiveExams = (exams as any[]).length - activeExams;
     const recentExams = [...(exams as any[])].slice(0, 5);
 
-    return { totalUsers, recentUsers, approvedWords, pendingWords, totalVotes, recentWords, activeExams, inactiveExams, recentExams };
+    return {
+      totalUsers,
+      recentUsers,
+      approvedWords,
+      pendingWords,
+      totalVotes,
+      recentWords,
+      activeExams,
+      inactiveExams,
+      recentExams,
+    };
   }, [usersData, words, exams]);
 
-  if (isLoading) return <Layout><Loader /></Layout>;
+  if (isLoading)
+    return (
+      <Layout>
+        <Loader />
+      </Layout>
+    );
 
-  const greeting = isRtl ? `مرحباً، ${adminUserInfo?.name ?? "المدير"}` : `Welcome, ${adminUserInfo?.name ?? "Admin"}`;
+  const greeting = isRtl
+    ? `مرحباً، ${adminUserInfo?.name ?? "المدير"}`
+    : `Welcome, ${adminUserInfo?.name ?? "Admin"}`;
 
   return (
     <Layout>
-      <div className={`lg:px-4 mb-10 w-full max-w-5xl py-3 mt-[70px] lg:mt-[50px] px-2 ${isRtl ? "text-right" : ""}`}>
-
+      <div
+        className={`lg:px-4 mb-10 w-full max-w-5xl py-3 mt-[70px] lg:mt-[50px] px-2 ${isRtl ? "text-right" : ""}`}>
         {/* Greeting */}
         <div className="mb-6">
           <h1 className="text-2xl font-black text-zinc-900">{greeting}</h1>
           <p className="text-sm text-zinc-500 mt-0.5">
-            {isRtl ? "هذا ملخص كل شيء في النظام." : "Here's a summary of everything in the platform."}
+            {isRtl
+              ? "هذا ملخص كل شيء في النظام."
+              : "Here's a summary of everything in the platform."}
           </p>
         </div>
 
@@ -146,8 +187,12 @@ export default function Dashboard() {
         {(words as any[]).length > 0 && (
           <div className="mb-8 rounded-2xl border bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold text-zinc-700">{isRtl ? "حالة الكلمات" : "Words Status"}</h2>
-              <span className="text-xs text-zinc-400">{(words as any[]).length} {isRtl ? "كلمة" : "total"}</span>
+              <h2 className="text-sm font-bold text-zinc-700">
+                {isRtl ? "حالة الكلمات" : "Words Status"}
+              </h2>
+              <span className="text-xs text-zinc-400">
+                {(words as any[]).length} {isRtl ? "كلمة" : "total"}
+              </span>
             </div>
             <div className="flex h-3 w-full overflow-hidden rounded-full bg-zinc-100">
               <div
@@ -174,7 +219,6 @@ export default function Dashboard() {
 
         {/* ── Recent users + recent words ── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
-
           {/* Recent users */}
           <div className="rounded-2xl border bg-white p-5 shadow-sm">
             <SectionHeader
@@ -184,26 +228,30 @@ export default function Dashboard() {
             />
             <div className="flex flex-col divide-y divide-zinc-100">
               {stats.recentUsers.length === 0 ? (
-                <p className="text-xs text-zinc-400 py-4 text-center">{isRtl ? "لا يوجد مستخدمون" : "No users yet"}</p>
-              ) : stats.recentUsers.map((u: any) => (
-                <button
-                  key={u._id}
-                  onClick={() => navigate(`/userlist/${u._id}`)}
-                  className="flex items-center gap-3 py-2.5 hover:bg-zinc-50 -mx-2 px-2 rounded-lg transition-colors text-left">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xs font-bold text-zinc-600 uppercase">
-                    {u.name?.[0] ?? "?"}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-zinc-800 truncate">{u.name}</p>
-                    <p className="text-xs text-zinc-400 truncate">{u.email}</p>
-                  </div>
-                  {u.isAdmin && (
-                    <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-600 shrink-0">
-                      Admin
-                    </span>
-                  )}
-                </button>
-              ))}
+                <p className="text-xs text-zinc-400 py-4 text-center">
+                  {isRtl ? "لا يوجد مستخدمون" : "No users yet"}
+                </p>
+              ) : (
+                stats.recentUsers.map((u: any) => (
+                  <button
+                    key={u._id}
+                    onClick={() => navigate(`/userlist/${u._id}`)}
+                    className="flex items-center gap-3 py-2.5 hover:bg-zinc-50 -mx-2 px-2 rounded-lg transition-colors text-left">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xs font-bold text-zinc-600 uppercase">
+                      {u.name?.[0] ?? "?"}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-zinc-800 truncate">{u.name}</p>
+                      <p className="text-xs text-zinc-400 truncate">{u.email}</p>
+                    </div>
+                    {u.isAdmin && (
+                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-600 shrink-0">
+                        Admin
+                      </span>
+                    )}
+                  </button>
+                ))
+              )}
             </div>
           </div>
 
@@ -216,32 +264,45 @@ export default function Dashboard() {
             />
             <div className="flex flex-col divide-y divide-zinc-100">
               {stats.recentWords.length === 0 ? (
-                <p className="text-xs text-zinc-400 py-4 text-center">{isRtl ? "لا توجد كلمات" : "No words yet"}</p>
-              ) : stats.recentWords.map((w: any) => (
-                <button
-                  key={w._id}
-                  onClick={() => navigate(`/wordlist/${w._id}`)}
-                  className="flex items-center gap-3 py-2.5 hover:bg-zinc-50 -mx-2 px-2 rounded-lg transition-colors text-left">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-extrabold text-zinc-800">{w.kuwaitiWord}</p>
-                      <span className={clsx(
-                        "rounded-full px-2 py-0.5 text-[10px] font-bold",
-                        w.isApproved ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700",
-                      )}>
-                        {w.isApproved ? (isRtl ? "معتمد" : "Approved") : (isRtl ? "قيد المراجعة" : "Pending")}
-                      </span>
+                <p className="text-xs text-zinc-400 py-4 text-center">
+                  {isRtl ? "لا توجد كلمات" : "No words yet"}
+                </p>
+              ) : (
+                stats.recentWords.map((w: any) => (
+                  <button
+                    key={w._id}
+                    onClick={() => navigate(`/wordlist/${w._id}`)}
+                    className="flex items-center gap-3 py-2.5 hover:bg-zinc-50 -mx-2 px-2 rounded-lg transition-colors text-left">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-extrabold text-zinc-800">{w.kuwaitiWord}</p>
+                        <span
+                          className={clsx(
+                            "rounded-full px-2 py-0.5 text-[10px] font-bold",
+                            w.isApproved
+                              ? "bg-green-100 text-green-700"
+                              : "bg-amber-100 text-amber-700",
+                          )}>
+                          {w.isApproved
+                            ? isRtl
+                              ? "معتمد"
+                              : "Approved"
+                            : isRtl
+                              ? "قيد المراجعة"
+                              : "Pending"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-zinc-400 truncate">{w.arabicMeaning}</p>
                     </div>
-                    <p className="text-xs text-zinc-400 truncate">{w.arabicMeaning}</p>
-                  </div>
-                  {(w.likes?.length ?? 0) > 0 && (
-                    <span className="flex items-center gap-1 text-xs font-bold text-rose-400 shrink-0">
-                      <Heart className="size-3 fill-rose-300 stroke-none" />
-                      {w.likes.length}
-                    </span>
-                  )}
-                </button>
-              ))}
+                    {(w.likes?.length ?? 0) > 0 && (
+                      <span className="flex items-center gap-1 text-xs font-bold text-rose-400 shrink-0">
+                        <Heart className="size-3 fill-rose-300 stroke-none" />
+                        {w.likes.length}
+                      </span>
+                    )}
+                  </button>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -257,10 +318,13 @@ export default function Dashboard() {
             <div className="flex flex-col divide-y divide-zinc-100">
               {stats.recentExams.map((exam: any) => (
                 <div key={exam._id} className="flex items-center gap-3 py-2.5">
-                  <div className={clsx(
-                    "flex size-8 shrink-0 items-center justify-center rounded-xl",
-                    exam.isActive ? "bg-emerald-50 text-emerald-600" : "bg-zinc-100 text-zinc-400",
-                  )}>
+                  <div
+                    className={clsx(
+                      "flex size-8 shrink-0 items-center justify-center rounded-xl",
+                      exam.isActive
+                        ? "bg-emerald-50 text-emerald-600"
+                        : "bg-zinc-100 text-zinc-400",
+                    )}>
                     <Brain className="size-4" />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -271,15 +335,24 @@ export default function Dashboard() {
                       {exam.questions?.length ?? 0} {isRtl ? "أسئلة" : "questions"}
                     </p>
                   </div>
-                  <span className={clsx(
-                    "flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold shrink-0",
-                    exam.isActive
-                      ? "bg-emerald-50 text-emerald-700"
-                      : "bg-zinc-100 text-zinc-500",
-                  )}>
-                    {exam.isActive
-                      ? <><ToggleRight className="size-3.5" />{isRtl ? "نشط" : "Active"}</>
-                      : <><ToggleLeft className="size-3.5" />{isRtl ? "غير نشط" : "Inactive"}</>}
+                  <span
+                    className={clsx(
+                      "flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold shrink-0",
+                      exam.isActive
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-zinc-100 text-zinc-500",
+                    )}>
+                    {exam.isActive ? (
+                      <>
+                        <ToggleRight className="size-3.5" />
+                        {isRtl ? "نشط" : "Active"}
+                      </>
+                    ) : (
+                      <>
+                        <ToggleLeft className="size-3.5" />
+                        {isRtl ? "غير نشط" : "Inactive"}
+                      </>
+                    )}
                   </span>
                 </div>
               ))}

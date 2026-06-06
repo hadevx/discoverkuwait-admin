@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   Brain,
   ChevronRight,
+  Images,
 } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../redux/slices/authSlice";
@@ -25,6 +26,7 @@ const NAV = [
   { to: "/dashboard", icon: LayoutDashboard, en: "Dashboard", ar: "الرئيسية" },
   { to: "/wordlist", icon: BookText, en: "Words", ar: "الكلمات" },
   { to: "/quizlist", icon: Brain, en: "Quiz", ar: "الاختبار" },
+  { to: "/forum", icon: Images, en: "Forum", ar: "المنتدى" },
   { to: "/userlist", icon: Users, en: "Users", ar: "المستخدمون" },
   { to: "/settings", icon: Settings, en: "Settings", ar: "الإعدادات" },
 ];

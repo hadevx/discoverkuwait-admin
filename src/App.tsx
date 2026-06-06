@@ -15,6 +15,7 @@ import Dashboard from "./pages/dashboard/Dashboard";
 import WordList from "./pages/words/WordList";
 import WordDetail from "./pages/words/WordDetail";
 import QuizList from "./pages/quiz/QuizList";
+import ForumApproval from "./pages/forum/ForumApproval";
 function App() {
   const { adminUserInfo } = useSelector((state: any) => state.auth);
 
@@ -40,6 +41,7 @@ function App() {
       <Route path="/wordlist" element={<PrivateRoute element={<WordList />} />} />
       <Route path="/wordlist/:wordId" element={<PrivateRoute element={<WordDetail />} />} />
       <Route path="/quizlist" element={<PrivateRoute element={<QuizList />} />} />
+      <Route path="/forum" element={<PrivateRoute element={<ForumApproval />} />} />
       <Route path="/userlist/:userID" element={<PrivateRoute element={<UserDetails />} />} />
       <Route path="/productlist" element={<PrivateRoute element={<ProductList />} />} />
       <Route path="/settings" element={<PrivateRoute element={<Settings />} />} />

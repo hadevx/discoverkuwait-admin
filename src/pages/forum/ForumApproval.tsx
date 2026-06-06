@@ -1,8 +1,16 @@
 import { useState } from "react";
 import { toast } from "react-toastify";
 import {
-  Check, X, Trash2, Images, Clock, CheckCircle2, Loader2,
-  Heart, Calendar, User, ChevronRight,
+  Check,
+  X,
+  Trash2,
+  Images,
+  Clock,
+  CheckCircle2,
+  Loader2,
+  Heart,
+  Calendar,
+  ChevronRight,
 } from "lucide-react";
 import clsx from "clsx";
 import {
@@ -26,7 +34,11 @@ type Post = {
 };
 
 function formatDate(date: string) {
-  return new Date(date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(date).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 function timeAgo(date: string) {
@@ -61,7 +73,9 @@ function Avatar({ user, size = "sm" }: { user: UserRef; size?: "sm" | "md" }) {
 // ─── Likes Modal ──────────────────────────────────────────────────────────────
 function LikesModal({ votes, onClose }: { votes: UserRef[]; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      onClick={onClose}>
       <div
         className="w-full max-w-sm rounded-2xl bg-white shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}>
@@ -89,7 +103,9 @@ function LikesModal({ votes, onClose }: { votes: UserRef[]; onClose: () => void 
             </div>
           ) : (
             votes.map((user) => (
-              <div key={user._id} className="flex items-center gap-3 px-5 py-3 hover:bg-zinc-50 transition-colors">
+              <div
+                key={user._id}
+                className="flex items-center gap-3 px-5 py-3 hover:bg-zinc-50 transition-colors">
                 <Avatar user={user} size="md" />
                 <p className="text-sm font-semibold text-zinc-800">{user.name}</p>
               </div>
@@ -212,7 +228,10 @@ function PostCard({ post, tab, onApprove, onReject, onDelete, onShowLikes }: Pos
             {confirmDelete ? (
               <div className="flex items-center gap-2 w-full">
                 <button
-                  onClick={() => { onDelete(post._id); setConfirmDelete(false); }}
+                  onClick={() => {
+                    onDelete(post._id);
+                    setConfirmDelete(false);
+                  }}
                   className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-rose-500 py-2 text-xs font-bold text-white hover:bg-rose-600 active:scale-95 transition-all">
                   <Check className="size-3.5" /> Confirm Delete
                 </button>
@@ -241,7 +260,8 @@ export default function ForumApproval() {
   const [tab, setTab] = useState<"pending" | "approved">("pending");
   const [likesModal, setLikesModal] = useState<UserRef[] | null>(null);
 
-  const { data: pendingPosts = [], isFetching: loadingPending } = useGetPendingPostsQuery(undefined);
+  const { data: pendingPosts = [], isFetching: loadingPending } =
+    useGetPendingPostsQuery(undefined);
   const { data: approvedData, isFetching: loadingApproved } = useGetApprovedPostsQuery(1);
   const approvedPosts: Post[] = approvedData?.posts ?? [];
 
@@ -286,7 +306,6 @@ export default function ForumApproval() {
       {likesModal && <LikesModal votes={likesModal} onClose={() => setLikesModal(null)} />}
 
       <div className="p-6 max-w-7xl mx-auto">
-
         {/* ── Page Header ── */}
         <div className="mb-8">
           <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -306,15 +325,23 @@ export default function ForumApproval() {
             <div className="flex items-center gap-3">
               <div className="flex flex-col items-center rounded-2xl border border-zinc-200 bg-white px-5 py-3 shadow-sm min-w-[80px]">
                 <span className="text-xl font-extrabold text-amber-500">{pendingPosts.length}</span>
-                <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide mt-0.5">Pending</span>
+                <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide mt-0.5">
+                  Pending
+                </span>
               </div>
               <div className="flex flex-col items-center rounded-2xl border border-zinc-200 bg-white px-5 py-3 shadow-sm min-w-[80px]">
-                <span className="text-xl font-extrabold text-emerald-500">{approvedPosts.length}</span>
-                <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide mt-0.5">Live</span>
+                <span className="text-xl font-extrabold text-emerald-500">
+                  {approvedPosts.length}
+                </span>
+                <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide mt-0.5">
+                  Live
+                </span>
               </div>
               <div className="flex flex-col items-center rounded-2xl border border-zinc-200 bg-white px-5 py-3 shadow-sm min-w-[80px]">
                 <span className="text-xl font-extrabold text-rose-500">{totalLikes}</span>
-                <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide mt-0.5">Total Likes</span>
+                <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide mt-0.5">
+                  Total Likes
+                </span>
               </div>
             </div>
           </div>
@@ -335,7 +362,9 @@ export default function ForumApproval() {
               {t === "pending" ? (
                 <Clock className={clsx("size-4", tab === t ? "text-amber-500" : "text-zinc-400")} />
               ) : (
-                <CheckCircle2 className={clsx("size-4", tab === t ? "text-emerald-500" : "text-zinc-400")} />
+                <CheckCircle2
+                  className={clsx("size-4", tab === t ? "text-emerald-500" : "text-zinc-400")}
+                />
               )}
               {t === "pending" ? "Pending Review" : "Live Posts"}
               {t === "pending" && pendingPosts.length > 0 && (

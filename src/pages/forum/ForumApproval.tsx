@@ -1,28 +1,29 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import {
-  Check,
-  X,
-  Trash2,
-  Images,
-  Clock,
-  CheckCircle2,
-  Loader2,
-  Heart,
-  Calendar,
-  ChevronRight,
+  Check, X, Trash2, Images, Clock, CheckCircle2,
+  Heart, Calendar, MessageSquare, Lock, LockOpen, Trophy,
 } from "lucide-react";
-import clsx from "clsx";
 import {
-  useGetPendingPostsQuery,
-  useGetApprovedPostsQuery,
+  useGetAllAdminPostsQuery,
   useApprovePostMutation,
-  useRejectPostMutation,
+  useUnapprovePostMutation,
   useAdminDeletePostMutation,
+  useGetAdminTopicsQuery,
+  useAdminCloseTopicMutation,
+  useAdminDeleteTopicMutation,
 } from "../../redux/queries/forumApi";
+import { useGetCompetitionQuery, useUpdateCompetitionMutation } from "../../redux/queries/competitionApi";
 import Layout from "../../Layout";
+import Badge from "../../components/Badge";
+import { Separator } from "../../components/ui/separator";
+import Loader from "../../components/Loader";
+import Paginate from "@/components/Paginate";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
 type UserRef = { _id: string; name: string; avatar?: string };
+
 type Post = {
   _id: string;
   author: UserRef;
@@ -33,11 +34,26 @@ type Post = {
   createdAt: string;
 };
 
+type Topic = {
+  _id: string;
+  author: UserRef;
+  description: string;
+  category: string;
+  isClosed: boolean;
+  likes: string[];
+  commentCount: number;
+  createdAt: string;
+};
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+const CAT_LABELS: Record<string, string> = {
+  general: "General", restaurants: "Restaurants", cafes: "Cafes",
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function formatDate(date: string) {
   return new Date(date).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
+    day: "2-digit", month: "short", year: "numeric",
   });
 }
 
@@ -51,21 +67,14 @@ function timeAgo(date: string) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-function Avatar({ user, size = "sm" }: { user: UserRef; size?: "sm" | "md" }) {
-  const cls = size === "md" ? "size-9" : "size-7";
+function UserAvatar({ user, size = "md" }: { user: UserRef; size?: "sm" | "md" }) {
+  const cls = size === "sm" ? "size-7" : "size-10";
   return user.avatar ? (
-    <img
-      src={`/avatar/${user.avatar}`}
-      alt={user.name}
-      className={clsx(cls, "rounded-full object-cover shrink-0 ring-2 ring-white")}
-    />
+    <img src={`/avatar/${user.avatar}`} alt={user.name}
+      className={`${cls} object-cover rounded-md shrink-0`} />
   ) : (
-    <div
-      className={clsx(
-        cls,
-        "rounded-full shrink-0 ring-2 ring-white flex items-center justify-center bg-indigo-100 text-indigo-700 font-bold uppercase text-xs",
-      )}>
-      {user.name?.[0] ?? "?"}
+    <div className={`${cls} rounded-md text-sm flex items-center uppercase justify-center font-semibold bg-[#f84713] text-white shrink-0`}>
+      {(user.name || "U").charAt(0)}{(user.name || "U").slice(-1)}
     </div>
   );
 }
@@ -73,347 +82,507 @@ function Avatar({ user, size = "sm" }: { user: UserRef; size?: "sm" | "md" }) {
 // ─── Likes Modal ──────────────────────────────────────────────────────────────
 function LikesModal({ votes, onClose }: { votes: UserRef[]; onClose: () => void }) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-      onClick={onClose}>
-      <div
-        className="w-full max-w-sm rounded-2xl bg-white shadow-2xl overflow-hidden"
-        onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
+      <div className="w-full max-w-sm rounded-xl bg-white border shadow-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b">
           <div className="flex items-center gap-2">
             <Heart className="size-4 text-rose-500 fill-rose-500" />
-            <h3 className="font-bold text-zinc-900 text-sm">
-              {votes.length} {votes.length === 1 ? "Like" : "Likes"}
-            </h3>
+            <span className="font-bold text-sm">{votes.length} {votes.length === 1 ? "Like" : "Likes"}</span>
           </div>
-          <button
-            onClick={onClose}
-            className="flex size-7 items-center justify-center rounded-full hover:bg-zinc-100 text-zinc-400 hover:text-zinc-700 transition-colors">
+          <button onClick={onClose} className="flex size-7 items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
             <X className="size-4" />
           </button>
         </div>
-
-        {/* List */}
-        <div className="max-h-80 overflow-y-auto divide-y divide-zinc-50">
+        <div className="max-h-72 overflow-y-auto divide-y">
           {votes.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-10 text-zinc-400">
-              <Heart className="size-8" />
-              <p className="text-sm">No likes yet</p>
+            <div className="flex flex-col items-center gap-2 py-8 text-gray-400">
+              <Heart className="size-7" /><p className="text-sm">No likes yet</p>
             </div>
-          ) : (
-            votes.map((user) => (
-              <div
-                key={user._id}
-                className="flex items-center gap-3 px-5 py-3 hover:bg-zinc-50 transition-colors">
-                <Avatar user={user} size="md" />
-                <p className="text-sm font-semibold text-zinc-800">{user.name}</p>
-              </div>
-            ))
-          )}
+          ) : votes.map((u) => (
+            <div key={u._id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors">
+              <UserAvatar user={u} size="sm" />
+              <p className="text-sm font-semibold">{u.name}</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
 }
 
-// ─── Post Card ────────────────────────────────────────────────────────────────
-type PostCardProps = {
-  post: Post;
-  tab: "pending" | "approved";
-  onApprove: (id: string) => void;
-  onReject: (id: string) => void;
-  onDelete: (id: string) => void;
-  onShowLikes: (votes: UserRef[]) => void;
-};
-
-function PostCard({ post, tab, onApprove, onReject, onDelete, onShowLikes }: PostCardProps) {
-  const [confirmDelete, setConfirmDelete] = useState(false);
-
+// ─── Action button helpers ────────────────────────────────────────────────────
+function BtnStatusToggle({ post, onToggle }: { post: Post; onToggle: () => void }) {
+  return post.isApproved ? (
+    <button onClick={onToggle}
+      className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold bg-green-50 text-green-700 border border-green-200 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200 transition active:scale-95">
+      <CheckCircle2 className="size-3" /> Live
+    </button>
+  ) : (
+    <button onClick={onToggle}
+      className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-green-50 hover:text-green-700 hover:border-green-200 transition active:scale-95">
+      <Clock className="size-3" /> Pending
+    </button>
+  );
+}
+function BtnClose({ isClosed, onClick }: { isClosed: boolean; onClick: () => void }) {
   return (
-    <div className="group flex flex-col overflow-hidden rounded-2xl bg-white border border-zinc-200/80 shadow-sm hover:shadow-lg transition-all duration-200">
-      {/* Image */}
-      <div className="relative overflow-hidden bg-zinc-100">
-        <img
-          src={post.imageUrl}
-          alt={post.caption || "forum post"}
-          className="w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-          style={{ aspectRatio: "4/3" }}
-        />
-
-        {/* Status badge */}
-        <div className="absolute top-3 left-3">
-          {tab === "pending" ? (
-            <span className="flex items-center gap-1.5 rounded-full bg-amber-500 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
-              <Clock className="size-3" /> Pending
-            </span>
-          ) : (
-            <span className="flex items-center gap-1.5 rounded-full bg-emerald-500 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
-              <CheckCircle2 className="size-3" /> Live
-            </span>
-          )}
-        </div>
-
-        {/* Likes badge — top right, clickable */}
-        <button
-          onClick={() => onShowLikes(post.votes)}
-          className="absolute top-3 right-3 flex items-center gap-1.5 rounded-full bg-black/60 backdrop-blur-sm px-2.5 py-1 text-[11px] font-bold text-white hover:bg-rose-500 transition-colors shadow-sm">
-          <Heart className="size-3 fill-white" />
-          {post.votes.length}
-        </button>
-      </div>
-
-      {/* Body */}
-      <div className="flex flex-col flex-1 p-4 gap-3">
-        {/* Author row */}
-        <div className="flex items-center gap-2.5">
-          <Avatar user={post.author} size="md" />
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-zinc-900 truncate">{post.author?.name}</p>
-            <div className="flex items-center gap-1 text-[11px] text-zinc-400">
-              <Calendar className="size-3" />
-              <span>{formatDate(post.createdAt)}</span>
-              <span className="mx-1">·</span>
-              <span>{timeAgo(post.createdAt)}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Caption */}
-        {post.caption ? (
-          <p className="text-sm text-zinc-600 line-clamp-2 leading-relaxed">{post.caption}</p>
-        ) : (
-          <p className="text-sm text-zinc-300 italic">No caption</p>
-        )}
-
-        {/* Likes row */}
-        {post.votes.length > 0 && (
-          <button
-            onClick={() => onShowLikes(post.votes)}
-            className="flex items-center gap-2 group/likes">
-            {/* Stacked avatars */}
-            <div className="flex -space-x-2">
-              {post.votes.slice(0, 4).map((v) => (
-                <Avatar key={v._id} user={v} size="sm" />
-              ))}
-            </div>
-            <span className="text-xs text-zinc-500 group-hover/likes:text-rose-500 transition-colors font-medium">
-              {post.votes.length === 1
-                ? `${post.votes[0].name} liked this`
-                : `${post.votes[0].name} and ${post.votes.length - 1} other${post.votes.length > 2 ? "s" : ""}`}
-            </span>
-            <ChevronRight className="size-3 text-zinc-400 group-hover/likes:text-rose-500 transition-colors" />
-          </button>
-        )}
-
-        {/* Divider */}
-        <div className="h-px bg-zinc-100" />
-
-        {/* Actions */}
-        {tab === "pending" ? (
-          <div className="flex gap-2">
-            <button
-              onClick={() => onApprove(post._id)}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-500 py-2 text-xs font-bold text-white hover:bg-emerald-600 active:scale-95 transition-all">
-              <Check className="size-3.5" /> Approve
-            </button>
-            <button
-              onClick={() => onReject(post._id)}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-rose-500 py-2 text-xs font-bold text-white hover:bg-rose-600 active:scale-95 transition-all">
-              <X className="size-3.5" /> Reject
-            </button>
-          </div>
-        ) : (
-          <div className="flex justify-end">
-            {confirmDelete ? (
-              <div className="flex items-center gap-2 w-full">
-                <button
-                  onClick={() => {
-                    onDelete(post._id);
-                    setConfirmDelete(false);
-                  }}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-rose-500 py-2 text-xs font-bold text-white hover:bg-rose-600 active:scale-95 transition-all">
-                  <Check className="size-3.5" /> Confirm Delete
-                </button>
-                <button
-                  onClick={() => setConfirmDelete(false)}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-zinc-200 py-2 text-xs font-semibold text-zinc-500 hover:bg-zinc-50 transition-colors">
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setConfirmDelete(true)}
-                className="flex items-center gap-1.5 rounded-xl border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-500 hover:border-rose-200 hover:text-rose-500 hover:bg-rose-50 transition-colors">
-                <Trash2 className="size-3.5" /> Delete
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+    <button onClick={onClick}
+      className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold border border-gray-300 text-gray-700 hover:bg-gray-50 transition active:scale-95">
+      {isClosed ? <><LockOpen className="size-3" /> Open</> : <><Lock className="size-3" /> Close</>}
+    </button>
+  );
+}
+function BtnDelete({ onConfirm }: { onConfirm: () => void }) {
+  const [confirm, setConfirm] = useState(false);
+  if (confirm) return (
+    <span className="inline-flex items-center gap-1">
+      <button onClick={() => { onConfirm(); setConfirm(false); }}
+        className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold bg-red-500 text-white hover:bg-red-600 transition active:scale-95">
+        <Check className="size-3" /> Confirm
+      </button>
+      <button onClick={() => setConfirm(false)}
+        className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-bold border border-gray-300 text-gray-500 hover:bg-gray-50 transition">
+        <X className="size-3" />
+      </button>
+    </span>
+  );
+  return (
+    <button onClick={() => setConfirm(true)}
+      className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold text-red-600 border border-red-200 hover:bg-red-50 transition active:scale-95">
+      <Trash2 className="size-3" /> Delete
+    </button>
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Section tab button ───────────────────────────────────────────────────────
+function SectionTab({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold border transition ${
+        active ? "bg-black text-white border-black" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+      }`}>
+      {children}
+    </button>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAIN PAGE
+// ═══════════════════════════════════════════════════════════════════════════════
 export default function ForumApproval() {
-  const [tab, setTab] = useState<"pending" | "approved">("pending");
+  const navigate = useNavigate();
+  const [section, setSection] = useState<"images" | "topics">("images");
+  const [imagesPage, setImagesPage] = useState(1);
+  const [topicsPage, setTopicsPage] = useState(1);
   const [likesModal, setLikesModal] = useState<UserRef[] | null>(null);
+  const [endDateInput, setEndDateInput] = useState("");
 
-  const { data: pendingPosts = [], isFetching: loadingPending } =
-    useGetPendingPostsQuery(undefined);
-  const { data: approvedData, isFetching: loadingApproved } = useGetApprovedPostsQuery(1);
-  const approvedPosts: Post[] = approvedData?.posts ?? [];
+  // ── Queries ───────────────────────────────────────────────────────────────
+  const { data: allPostsData, isFetching: imageLoading } = useGetAllAdminPostsQuery(imagesPage);
+  const { data: topicsData, isFetching: loadingTopics } = useGetAdminTopicsQuery(topicsPage);
+  const { data: competition, isFetching: compLoading } = useGetCompetitionQuery();
 
+  const allPosts: Post[] = allPostsData?.posts ?? [];
+  const imagesPages: number = allPostsData?.pages ?? 1;
+  const pendingCount: number = allPosts.filter((p) => !p.isApproved).length;
+  const topics: Topic[] = topicsData?.topics ?? [];
+  const topicPages: number = topicsData?.pages ?? 1;
+
+  // ── Mutations ─────────────────────────────────────────────────────────────
   const [approvePost] = useApprovePostMutation();
-  const [rejectPost] = useRejectPostMutation();
+  const [unapprovePost] = useUnapprovePostMutation();
   const [adminDeletePost] = useAdminDeletePostMutation();
+  const [adminCloseTopic] = useAdminCloseTopicMutation();
+  const [adminDeleteTopic] = useAdminDeleteTopicMutation();
+  const [updateCompetition] = useUpdateCompetitionMutation();
 
-  const handleApprove = async (id: string) => {
+  // ── Handlers ──────────────────────────────────────────────────────────────
+  const handleToggleStatus = async (post: Post) => {
     try {
-      await approvePost(id).unwrap();
-      toast.success("Post approved and published");
-    } catch {
-      toast.error("Failed to approve");
-    }
+      if (post.isApproved) {
+        await unapprovePost(post._id).unwrap();
+        toast.success("Set to pending");
+      } else {
+        await approvePost(post._id).unwrap();
+        toast.success("Post approved");
+      }
+    } catch { toast.error("Failed to update status"); }
   };
-
-  const handleReject = async (id: string) => {
+  const handleDeletePost = async (id: string) => {
+    try { await adminDeletePost(id).unwrap(); toast.success("Post deleted"); }
+    catch { toast.error("Failed to delete"); }
+  };
+  const handleCloseTopic = async (id: string) => {
+    try { await adminCloseTopic(id).unwrap(); toast.success("Topic updated"); }
+    catch { toast.error("Failed to update"); }
+  };
+  const handleDeleteTopic = async (id: string) => {
+    try { await adminDeleteTopic(id).unwrap(); toast.success("Topic deleted"); }
+    catch { toast.error("Failed to delete"); }
+  };
+  const handleToggleCompetition = async () => {
     try {
-      await rejectPost(id).unwrap();
-      toast.success("Post rejected and removed");
-    } catch {
-      toast.error("Failed to reject");
-    }
+      await updateCompetition({ isOpen: !competition?.isOpen }).unwrap();
+      toast.success(competition?.isOpen ? "Competition closed" : "Competition opened");
+    } catch { toast.error("Failed to update competition"); }
   };
-
-  const handleDelete = async (id: string) => {
+  const handleSaveDate = async () => {
     try {
-      await adminDeletePost(id).unwrap();
-      toast.success("Post deleted");
-    } catch {
-      toast.error("Failed to delete");
-    }
+      await updateCompetition({ endDate: endDateInput || null }).unwrap();
+      toast.success("End date saved");
+      setEndDateInput("");
+    } catch { toast.error("Failed to save date"); }
   };
-
-  const posts: Post[] = tab === "pending" ? pendingPosts : approvedPosts;
-  const loading = tab === "pending" ? loadingPending : loadingApproved;
-
-  const totalLikes = approvedPosts.reduce((acc, p) => acc + p.votes.length, 0);
 
   return (
     <Layout>
       {likesModal && <LikesModal votes={likesModal} onClose={() => setLikesModal(null)} />}
 
-      <div className="p-6 max-w-7xl mx-auto">
-        {/* ── Page Header ── */}
-        <div className="mb-8">
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <h1 className="text-2xl font-extrabold text-zinc-900 flex items-center gap-2.5">
-                <span className="flex size-9 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
-                  <Images className="size-5" />
-                </span>
-                Forum Photos
-              </h1>
-              <p className="text-sm text-zinc-500 mt-1 ml-11">
-                Review and approve user-submitted photos
-              </p>
-            </div>
+      {(imageLoading || loadingTopics || compLoading) && <Loader />}
 
-            {/* Stats */}
-            <div className="flex items-center gap-3">
-              <div className="flex flex-col items-center rounded-2xl border border-zinc-200 bg-white px-5 py-3 shadow-sm min-w-[80px]">
-                <span className="text-xl font-extrabold text-amber-500">{pendingPosts.length}</span>
-                <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide mt-0.5">
-                  Pending
-                </span>
-              </div>
-              <div className="flex flex-col items-center rounded-2xl border border-zinc-200 bg-white px-5 py-3 shadow-sm min-w-[80px]">
-                <span className="text-xl font-extrabold text-emerald-500">
-                  {approvedPosts.length}
-                </span>
-                <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide mt-0.5">
-                  Live
-                </span>
-              </div>
-              <div className="flex flex-col items-center rounded-2xl border border-zinc-200 bg-white px-5 py-3 shadow-sm min-w-[80px]">
-                <span className="text-xl font-extrabold text-rose-500">{totalLikes}</span>
-                <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide mt-0.5">
-                  Total Likes
-                </span>
-              </div>
-            </div>
+
+      <div className="lg:px-4 mb-10 lg:w-4xl w-full min-h-screen lg:min-h-auto flex justify-between py-3 mt-[70px] lg:mt-[50px] px-2">
+        <div className="w-full">
+
+          {/* ── Header ── */}
+          <div className="flex justify-between items-start gap-3 flex-wrap">
+            <h1 className="text-lg lg:text-2xl font-black flex gap-2 lg:gap-4 items-center flex-wrap">
+              Forum:
+              <Badge icon={false} className="p-1">
+                {section === "images"
+                  ? <><Images strokeWidth={1} className="size-5" /><p className="text-base">{allPostsData?.total ?? 0}</p></>
+                  : <><MessageSquare strokeWidth={1} className="size-5" /><p className="text-base">{topicsData?.topics?.length ?? 0}</p></>}
+              </Badge>
+            </h1>
           </div>
-        </div>
 
-        {/* ── Tabs ── */}
-        <div className="flex gap-1 rounded-2xl bg-zinc-100 p-1 mb-6 w-fit">
-          {(["pending", "approved"] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={clsx(
-                "flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all duration-150",
-                tab === t
-                  ? "bg-white text-zinc-900 shadow-sm"
-                  : "text-zinc-500 hover:text-zinc-700",
-              )}>
-              {t === "pending" ? (
-                <Clock className={clsx("size-4", tab === t ? "text-amber-500" : "text-zinc-400")} />
-              ) : (
-                <CheckCircle2
-                  className={clsx("size-4", tab === t ? "text-emerald-500" : "text-zinc-400")}
-                />
-              )}
-              {t === "pending" ? "Pending Review" : "Live Posts"}
-              {t === "pending" && pendingPosts.length > 0 && (
-                <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white leading-none">
-                  {pendingPosts.length}
+          <Separator className="my-4 bg-black/20" />
+
+          {/* ── Section tabs ── */}
+          <div className="flex gap-2 mb-6">
+            <SectionTab active={section === "images"} onClick={() => setSection("images")}>
+              <Trophy className="size-4" />
+              Best Image Reward
+              {pendingCount > 0 && (
+                <span className={`rounded-full text-[10px] font-black px-1.5 py-0.5 leading-none ${section === "images" ? "bg-white text-black" : "bg-red-500 text-white"}`}>
+                  {pendingCount}
                 </span>
               )}
-            </button>
-          ))}
-        </div>
+            </SectionTab>
+            <SectionTab active={section === "topics"} onClick={() => setSection("topics")}>
+              <MessageSquare className="size-4" />
+              Topics
+            </SectionTab>
+          </div>
 
-        {/* ── Content ── */}
-        {loading ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-32">
-            <Loader2 className="size-8 animate-spin text-indigo-400" />
-            <p className="text-sm text-zinc-400">Loading posts…</p>
-          </div>
-        ) : posts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-4 py-32 text-center">
-            <div className="flex size-16 items-center justify-center rounded-3xl bg-zinc-100 text-zinc-300">
-              {tab === "pending" ? <Clock className="size-8" /> : <Images className="size-8" />}
-            </div>
-            <div>
-              <p className="text-base font-bold text-zinc-700">
-                {tab === "pending" ? "All caught up!" : "No live posts yet"}
-              </p>
-              <p className="text-sm text-zinc-400 mt-1">
-                {tab === "pending"
-                  ? "No posts are waiting for review."
-                  : "Approve some pending posts to see them here."}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {posts.map((post) => (
-              <PostCard
-                key={post._id}
-                post={post}
-                tab={tab}
-                onApprove={handleApprove}
-                onReject={handleReject}
-                onDelete={handleDelete}
-                onShowLikes={setLikesModal}
-              />
-            ))}
-          </div>
-        )}
+          {/* ══ IMAGES SECTION ══════════════════════════════════════════════ */}
+          {section === "images" && (
+            <>
+              {/* Competition control panel */}
+              <div className="rounded-lg border bg-white p-4 mb-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Trophy className="size-4 text-amber-500" />
+                  <p className="text-sm font-black text-gray-800">Competition Control</p>
+                </div>
+                <div className="flex items-center gap-4 flex-wrap">
+                  {/* Status badge */}
+                  <div className="flex items-center gap-2">
+                    {competition?.isOpen ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 text-green-700 border border-green-200 text-xs font-bold px-3 py-1.5">
+                        <CheckCircle2 className="size-3.5" /> Open
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 text-gray-500 border border-gray-200 text-xs font-bold px-3 py-1.5">
+                        <Lock className="size-3.5" /> Closed
+                      </span>
+                    )}
+                    {competition?.endDate && (
+                      <span className="text-xs text-gray-500 flex items-center gap-1">
+                        <Calendar className="size-3.5" />
+                        Ends {new Date(competition.endDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Toggle open/close */}
+                  <button
+                    onClick={handleToggleCompetition}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-bold border transition active:scale-95 ${
+                      competition?.isOpen
+                        ? "bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
+                        : "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                    }`}>
+                    {competition?.isOpen
+                      ? <><Lock className="size-3.5" /> Close Competition</>
+                      : <><LockOpen className="size-3.5" /> Open Competition</>}
+                  </button>
+
+                  {/* Date picker */}
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      value={endDateInput}
+                      onChange={(e) => setEndDateInput(e.target.value)}
+                      className="rounded-lg border border-gray-300 text-xs px-3 py-2 text-gray-700 focus:outline-none focus:border-gray-400"
+                    />
+                    <button
+                      onClick={handleSaveDate}
+                      disabled={!endDateInput}
+                      className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold bg-black text-white hover:bg-gray-800 disabled:opacity-40 transition active:scale-95">
+                      <Check className="size-3" /> Set Date
+                    </button>
+                    {competition?.endDate && (
+                      <button
+                        onClick={() => updateCompetition({ endDate: null })}
+                        className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-xs text-gray-400 border border-gray-200 hover:text-red-500 hover:border-red-200 transition">
+                        <X className="size-3" /> Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {/* Desktop table */}
+              <div className="rounded-lg border p-3 sm:p-5 bg-white mt-2 hidden sm:block overflow-x-auto">
+                {allPosts.length === 0 ? (
+                  <EmptyRow colSpan={7} message="No images yet." />
+                ) : (
+                  <table className="w-full rounded-lg text-xs lg:text-sm border-gray-200 text-left text-gray-700">
+                    <thead className="bg-white text-gray-900/50 font-semibold">
+                      <tr>
+                        <th className="pb-2 border-b">Image</th>
+                        <th className="pb-2 border-b">Caption</th>
+                        <th className="pb-2 border-b">Author</th>
+                        <th className="pb-2 border-b hidden md:table-cell">Date</th>
+                        <th className="pb-2 border-b">
+                          <span className="flex items-center gap-1"><Heart className="size-3 text-rose-400" /> Likes</span>
+                        </th>
+                        <th className="pb-2 border-b">Status</th>
+                        <th className="pb-2 border-b">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 bg-white">
+                      {allPosts.map((post) => (
+                        <tr key={post._id} className="hover:bg-gray-50 transition font-medium">
+                          <td className="py-3">
+                            <img src={post.imageUrl} alt={post.caption || "post"}
+                              className="size-10 object-cover rounded-md border" />
+                          </td>
+                          <td className="py-3 max-w-[160px]">
+                            {post.caption
+                              ? <span className="line-clamp-2 text-gray-700" dir="auto">{post.caption}</span>
+                              : <span className="text-gray-300 italic">No caption</span>}
+                          </td>
+                          <td className="py-3">
+                            <div className="flex items-center gap-2">
+                              <UserAvatar user={post.author} size="sm" />
+                              <span className="truncate max-w-[100px]">{post.author?.name}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 hidden md:table-cell text-gray-500 text-xs">
+                            <div>{formatDate(post.createdAt)}</div>
+                            <div className="text-gray-400">{timeAgo(post.createdAt)}</div>
+                          </td>
+                          <td className="py-3">
+                            <button onClick={() => setLikesModal(post.votes)}
+                              className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-rose-500 transition font-semibold">
+                              <Heart className="size-3.5" /> {post.votes.length}
+                            </button>
+                          </td>
+                          <td className="py-3">
+                            <BtnStatusToggle post={post} onToggle={() => handleToggleStatus(post)} />
+                          </td>
+                          <td className="py-3">
+                            <BtnDelete onConfirm={() => handleDeletePost(post._id)} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                <div className="mt-4">
+                  <Paginate page={imagesPage} pages={imagesPages} setPage={setImagesPage} />
+                </div>
+              </div>
+
+              {/* Mobile cards */}
+              <div className="sm:hidden mt-4 space-y-3">
+                {allPosts.length === 0 ? (
+                  <div className="rounded-xl border bg-white p-6 text-center text-gray-500 font-semibold text-sm">
+                    No images yet.
+                  </div>
+                ) : allPosts.map((post) => (
+                  <div key={post._id} className="rounded-xl border bg-white p-3">
+                    <div className="flex items-start gap-3">
+                      <img src={post.imageUrl} alt={post.caption || "post"}
+                        className="size-14 object-cover rounded-md border shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <UserAvatar user={post.author} size="sm" />
+                          <span className="font-bold text-sm truncate">{post.author?.name}</span>
+                        </div>
+                        {post.caption && (
+                          <p className="text-xs text-gray-600 line-clamp-2">{post.caption}</p>
+                        )}
+                        <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-400 flex-wrap">
+                          <span className="flex items-center gap-1"><Calendar className="size-3" />{formatDate(post.createdAt)}</span>
+                          <button onClick={() => setLikesModal(post.votes)} className="flex items-center gap-1 hover:text-rose-500 transition">
+                            <Heart className="size-3" /> {post.votes.length}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 mt-3 flex-wrap">
+                      <BtnStatusToggle post={post} onToggle={() => handleToggleStatus(post)} />
+                      <BtnDelete onConfirm={() => handleDeletePost(post._id)} />
+                    </div>
+                  </div>
+                ))}
+                <Paginate page={imagesPage} pages={imagesPages} setPage={setImagesPage} />
+              </div>
+            </>
+          )}
+
+          {/* ══ TOPICS SECTION ══════════════════════════════════════════════ */}
+          {section === "topics" && (
+            <>
+              {/* Desktop table */}
+              <div className="rounded-lg border p-3 sm:p-5 bg-white mt-2 hidden sm:block overflow-x-auto">
+                {topics.length === 0 ? (
+                  <EmptyRow colSpan={7} message="No topics yet." />
+                ) : (
+                  <table className="w-full rounded-lg text-xs lg:text-sm border-gray-200 text-left text-gray-700">
+                    <thead className="bg-white text-gray-900/50 font-semibold">
+                      <tr>
+                        <th className="pb-2 border-b">Topic</th>
+                        <th className="pb-2 border-b">Category</th>
+                        <th className="pb-2 border-b">Author</th>
+                        <th className="pb-2 border-b hidden md:table-cell">Date</th>
+                        <th className="pb-2 border-b hidden lg:table-cell">
+                          <span className="flex items-center gap-1"><MessageSquare className="size-3" /> Comments</span>
+                        </th>
+                        <th className="pb-2 border-b hidden lg:table-cell">
+                          <span className="flex items-center gap-1"><Heart className="size-3 text-rose-400" /> Likes</span>
+                        </th>
+                        <th className="pb-2 border-b">Status</th>
+                        <th className="pb-2 border-b">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 bg-white">
+                      {topics.map((topic) => (
+                        <tr key={topic._id} onClick={() => navigate(`/forum/topics/${topic._id}`)} className="hover:bg-gray-50 transition font-medium cursor-pointer">
+                          <td className="py-3 max-w-[220px]">
+                            <p className="line-clamp-2 text-gray-700 leading-snug" dir="auto">{topic.description}</p>
+                          </td>
+                          <td className="py-3">
+                            <span className="inline-flex rounded-full bg-gray-100 text-gray-700 px-2.5 py-0.5 text-[11px] font-bold whitespace-nowrap">
+                              {CAT_LABELS[topic.category] ?? topic.category}
+                            </span>
+                          </td>
+                          <td className="py-3">
+                            <div className="flex items-center gap-2">
+                              <UserAvatar user={topic.author} size="sm" />
+                              <span className="truncate max-w-[100px]">{topic.author?.name}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 hidden md:table-cell text-gray-500 text-xs">
+                            <div>{formatDate(topic.createdAt)}</div>
+                            <div className="text-gray-400">{timeAgo(topic.createdAt)}</div>
+                          </td>
+                          <td className="py-3 hidden lg:table-cell text-gray-600">
+                            {topic.commentCount ?? 0}
+                          </td>
+                          <td className="py-3 hidden lg:table-cell text-gray-600">
+                            {topic.likes?.length ?? 0}
+                          </td>
+                          <td className="py-3">
+                            {topic.isClosed ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-red-50 text-red-600 text-[11px] font-bold px-2.5 py-0.5">
+                                <Lock className="size-3" /> Closed
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-green-50 text-green-700 text-[11px] font-bold px-2.5 py-0.5">
+                                <CheckCircle2 className="size-3" /> Open
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <BtnClose isClosed={topic.isClosed} onClick={() => handleCloseTopic(topic._id)} />
+                              <BtnDelete onConfirm={() => handleDeleteTopic(topic._id)} />
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                <div className="mt-4">
+                  <Paginate page={topicsPage} pages={topicPages} setPage={setTopicsPage} />
+                </div>
+              </div>
+
+              {/* Mobile cards */}
+              <div className="sm:hidden mt-4 space-y-3">
+                {topics.length === 0 ? (
+                  <div className="rounded-xl border bg-white p-6 text-center text-gray-500 font-semibold text-sm">
+                    No topics yet.
+                  </div>
+                ) : topics.map((topic) => (
+                  <div key={topic._id} className="rounded-xl border bg-white p-3 active:scale-[0.99] transition cursor-pointer"
+                    onClick={() => navigate(`/forum/topics/${topic._id}`)}>
+                    <div className="flex items-start gap-2 mb-2">
+                      <span className="inline-flex rounded-full bg-gray-100 text-gray-700 px-2.5 py-0.5 text-[11px] font-bold shrink-0 mt-0.5">
+                        {CAT_LABELS[topic.category] ?? topic.category}
+                      </span>
+                      {topic.isClosed ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-red-50 text-red-600 text-[11px] font-bold px-2 py-0.5">
+                          <Lock className="size-3" /> Closed
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-green-50 text-green-700 text-[11px] font-bold px-2 py-0.5">
+                          <CheckCircle2 className="size-3" /> Open
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-700 line-clamp-2 leading-snug mb-2" dir="auto">{topic.description}</p>
+                    <div className="flex items-center gap-2 mb-2">
+                      <UserAvatar user={topic.author} size="sm" />
+                      <span className="font-bold text-sm truncate">{topic.author?.name}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap mb-3">
+                      <span className="flex items-center gap-1"><Calendar className="size-3" />{formatDate(topic.createdAt)}</span>
+                      <span className="flex items-center gap-1"><MessageSquare className="size-3" />{topic.commentCount ?? 0}</span>
+                      <span className="flex items-center gap-1"><Heart className="size-3" />{topic.likes?.length ?? 0}</span>
+                    </div>
+                    <div className="flex gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                      <BtnClose isClosed={topic.isClosed} onClick={() => handleCloseTopic(topic._id)} />
+                      <BtnDelete onConfirm={() => handleDeleteTopic(topic._id)} />
+                    </div>
+                  </div>
+                ))}
+                <Paginate page={topicsPage} pages={topicPages} setPage={setTopicsPage} />
+              </div>
+            </>
+          )}
+
+        </div>
       </div>
     </Layout>
+  );
+}
+
+// ─── Shared ───────────────────────────────────────────────────────────────────
+function EmptyRow({ colSpan, message }: { colSpan: number; message: string }) {
+  return (
+    <table className="w-full text-sm text-left text-gray-700">
+      <tbody>
+        <tr>
+          <td colSpan={colSpan} className="py-12 text-center text-gray-400 font-semibold">
+            {message}
+          </td>
+        </tr>
+      </tbody>
+    </table>
   );
 }

@@ -67,9 +67,9 @@ function SideMenu() {
       {/* ── Brand ── */}
       <div className="px-5 pt-6 pb-5">
         <div className="flex items-center gap-3">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white/20 shadow-inner">
+          {/*  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white/20 shadow-inner">
             <img src="/avatar/logo.webp" alt="logo" className="size-6 rounded-md" />
-          </div>
+          </div> */}
           <div className="leading-tight">
             <p className="text-sm font-extrabold text-white tracking-tight">Discover Kuwait</p>
             <p className="text-[11px] text-indigo-300 font-medium">Admin Dashboard</p>
